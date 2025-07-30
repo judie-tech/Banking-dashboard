@@ -1,12 +1,21 @@
-import React, { useState } from 'react';
-import { Wallet, TrendingUp, TrendingDown, Send, CreditCard, DollarSign, FileText, Download } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import StatsCard from '../components/Dashboard/StatsCard';
-import RecentTransactions from '../components/Dashboard/RecentTransactions';
-import TransferModal from '../components/Transfer/TransferModal';
-import DepositModal from '../components/Deposit/DepositModal';
-import StatementsModal from '../components/Statements/StatementsModal';
-import { Transaction } from '../types';
+import React, { useState } from "react";
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Send,
+  CreditCard,
+  DollarSign,
+  FileText,
+  Download,
+} from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import StatsCard from "../components/Dashboard/StatsCard";
+import RecentTransactions from "../components/Dashboard/RecentTransactions";
+import TransferModal from "../components/Transfer/TransferModal";
+import DepositModal from "../components/Deposit/DepositModal";
+import StatementsModal from "../components/Statements/StatementsModal";
+import { Transaction } from "../types";
 
 const UserDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -19,29 +28,29 @@ const UserDashboard: React.FC = () => {
 
   const stats = [
     {
-      title: 'Available Balance',
-      value: 'KES 0',
+      title: "Available Balance",
+      value: "KES 0",
       icon: Wallet,
-      color: 'teal' as const
+      color: "teal" as const,
     },
     {
-      title: 'Total Deposits',
-      value: 'KES 0',
+      title: "Total Deposits",
+      value: "KES 0",
       icon: TrendingUp,
-      color: 'blue' as const
+      color: "blue" as const,
     },
     {
-      title: 'Total Withdrawals',
-      value: '0',
+      title: "Total Withdrawals",
+      value: "0",
       icon: TrendingDown,
-      color: 'coral' as const
+      color: "coral" as const,
     },
     {
-      title: 'Recent Transactions',
-      value: '0',
+      title: "Recent Transactions",
+      value: "0",
       icon: CreditCard,
-      color: 'purple' as const
-    }
+      color: "purple" as const,
+    },
   ];
 
   return (
@@ -50,14 +59,20 @@ const UserDashboard: React.FC = () => {
       <div className="bg-gradient-to-r from-[#2a3b8f] to-[#00c9b1] rounded-2xl p-8 text-white shadow-2xl">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold mb-2">Welcome back, {user?.name}!</h1>
+            <h1 className="text-2xl font-bold mb-2">
+              Welcome back, {user?.name}!
+            </h1>
             <p className="opacity-90 text-lg">Manage your finances with ease</p>
           </div>
           <div className="text-right">
             <div className="bg-white/20 backdrop-blur-lg rounded-xl p-4">
               <p className="text-sm opacity-90 mb-1">Current Balance</p>
-              <p className="text-4xl font-bold mb-1">KES {user?.balance.toLocaleString() || '0'}</p>
-              <p className="text-sm opacity-75 capitalize">{user?.accountType} Account</p>
+              <p className="text-4xl font-bold mb-1">
+                KES {user?.balance.toLocaleString() || "0"}
+              </p>
+              <p className="text-sm opacity-75 capitalize">
+                {user?.accountType} Account
+              </p>
             </div>
           </div>
         </div>
@@ -74,8 +89,12 @@ const UserDashboard: React.FC = () => {
               <Send className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Transfer Money</h3>
-              <p className="text-sm text-gray-600">Send money to other accounts</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                Transfer Money
+              </h3>
+              <p className="text-sm text-gray-600">
+                Send money to other accounts
+              </p>
             </div>
           </div>
         </button>
@@ -89,7 +108,9 @@ const UserDashboard: React.FC = () => {
               <DollarSign className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Deposit Funds</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                Deposit Funds
+              </h3>
               <p className="text-sm text-gray-600">Add money to your account</p>
             </div>
           </div>
@@ -104,8 +125,12 @@ const UserDashboard: React.FC = () => {
               <FileText className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">View Statements</h3>
-              <p className="text-sm text-gray-600">Download account statements</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                View Statements
+              </h3>
+              <p className="text-sm text-gray-600">
+                Download account statements
+              </p>
             </div>
           </div>
         </button>

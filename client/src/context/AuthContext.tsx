@@ -1,18 +1,26 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface AuthUser {
-  id: string; // UUID string
+  id: number;
   name: string;
   email: string;
   role: string;
   balance: number;
+  accountType: string;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    accountType: string
+  ) => Promise<boolean>;
+  refreshUser: () => Promise<void>; // ✅ Added
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,13 +37,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
+  const isAuthenticated = !!user;
+
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const response = await fetch("http://localhost:3000/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
@@ -51,6 +59,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         email: data.user.email,
         role: data.user.role,
         balance: data.user.balance,
+        accountType:
+          data.user.accountType ||
+          (data.user.role === "admin" ? "Checking" : "Savings"),
       };
 
       setUser(loggedInUser);
@@ -67,15 +78,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const register = async (
     name: string,
     email: string,
-    password: string
+    password: string,
+    accountType: string
   ): Promise<boolean> => {
     try {
       const response = await fetch("http://localhost:3000/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name, email, password }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, accountType }),
       });
 
       const data = await response.json();
@@ -90,6 +100,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         email: data.user.email,
         role: data.user.role,
         balance: data.user.balance,
+        accountType:
+          data.user.accountType ||
+          (data.user.role === "admin" ? "Checking" : "Savings"),
       };
 
       setUser(newUser);
@@ -103,6 +116,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // ✅ Refresh user from server
+  const refreshUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+
+      if (!token || !storedUser) return;
+
+      const parsedUser = JSON.parse(storedUser);
+      const response = await fetch(
+        `http://localhost:3000/api/users/${parsedUser.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const updatedUser: AuthUser = {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          balance: data.balance,
+          accountType: data.accountType,
+        };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+      }
+    } catch (error) {
+      console.error("Failed to refresh user:", error);
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
@@ -110,7 +160,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register }}>
+    <AuthContext.Provider
+      value={{ user, isAuthenticated, login, logout, register, refreshUser }}
+    >
       {children}
     </AuthContext.Provider>
   );
