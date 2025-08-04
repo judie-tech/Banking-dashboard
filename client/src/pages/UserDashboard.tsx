@@ -7,6 +7,7 @@ import {
   CreditCard,
   DollarSign,
   FileText,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import StatsCard from "../components/Dashboard/StatsCard";
@@ -14,6 +15,7 @@ import RecentTransactions from "../components/Dashboard/RecentTransactions";
 import TransferModal from "../components/Transfer/TransferModal";
 import DepositModal from "../components/Deposit/DepositModal";
 import StatementsModal from "../components/Statements/StatementsModal";
+import SpendingChart from "../components/Charts/SpendingChart";
 import { Transaction } from "../types";
 
 const UserDashboard: React.FC = () => {
@@ -26,14 +28,13 @@ const UserDashboard: React.FC = () => {
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [statementsModalOpen, setStatementsModalOpen] = useState(false);
+  const [chartType, setChartType] = useState<"weekly" | "monthly">("weekly");
 
   useEffect(() => {
     if (!user?.id) return;
 
     const fetchTransactions = async () => {
-      if (!user?.id) return;
-
-      const token = localStorage.getItem("token"); // or wherever you store it
+      const token = localStorage.getItem("token");
 
       try {
         const res = await fetch(
@@ -62,7 +63,7 @@ const UserDashboard: React.FC = () => {
             amount: tx.amount,
             type: tx.type,
             status: tx.status || "completed",
-            date: tx.createdAt,
+            date: new Date(tx.createdAt).toLocaleDateString(),
             description: tx.note || "Transaction",
             recipient: tx.recipient || undefined,
             sender: tx.sender || undefined,
@@ -194,6 +195,43 @@ const UserDashboard: React.FC = () => {
         {stats.map((stat, index) => (
           <StatsCard key={index} {...stat} />
         ))}
+      </div>
+
+      {/* Spending Chart */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#4e54c8] to-[#8f94fb] rounded-xl flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Spending Analytics
+            </h2>
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setChartType("weekly")}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                chartType === "weekly"
+                  ? "bg-[#2a3b8f] text-white shadow-lg"
+                  : "bg-white/80 text-gray-700 hover:bg-white"
+              }`}
+            >
+              Weekly
+            </button>
+            <button
+              onClick={() => setChartType("monthly")}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                chartType === "monthly"
+                  ? "bg-[#2a3b8f] text-white shadow-lg"
+                  : "bg-white/80 text-gray-700 hover:bg-white"
+              }`}
+            >
+              Monthly
+            </button>
+          </div>
+        </div>
+        <SpendingChart type={chartType} />
       </div>
 
       {/* Recent Transactions */}

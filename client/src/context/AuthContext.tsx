@@ -7,8 +7,8 @@ interface AuthUser {
   role: string;
   balance: number;
   accountType: string;
-  totalDeposits: number; // ✅ Added
-  totalWithdrawals: number; // ✅ Added
+  totalDeposits: number;
+  totalWithdrawals: number;
 }
 
 interface AuthContextType {
@@ -20,10 +20,10 @@ interface AuthContextType {
     name: string,
     email: string,
     password: string,
-    accountType: string
+    role: string
   ) => Promise<boolean>;
   refreshUser: () => Promise<void>;
-  fetchUser: () => Promise<void>; // ✅ must be here
+  fetchUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,8 +62,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         accountType:
           data.user.accountType ||
           (data.user.role === "admin" ? "Checking" : "Savings"),
-        totalDeposits: data.user.totalDeposits, // ✅ Added
-        totalWithdrawals: data.user.totalWithdrawals, // ✅ Added
+        totalDeposits: data.user.totalDeposits,
+        totalWithdrawals: data.user.totalWithdrawals,
       };
 
       setUser(loggedInUser);
@@ -81,13 +81,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     name: string,
     email: string,
     password: string,
-    accountType: string
+    role: string // ✅ changed from accountType
   ): Promise<boolean> => {
     try {
       const response = await fetch("http://localhost:3000/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, accountType }),
+        body: JSON.stringify({ name, email, password, role }), // ✅ correct key
       });
 
       const data = await response.json();
@@ -102,8 +102,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         accountType:
           data.user.accountType ||
           (data.user.role === "admin" ? "Checking" : "Savings"),
-        totalDeposits: data.user.totalDeposits, // ✅ Added
-        totalWithdrawals: data.user.totalWithdrawals, // ✅ Added
+        totalDeposits: data.user.totalDeposits,
+        totalWithdrawals: data.user.totalWithdrawals,
       };
 
       setUser(newUser);
@@ -122,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem("user");
     localStorage.removeItem("token");
   };
+
   const fetchUser = async (): Promise<void> => {
     try {
       const token = localStorage.getItem("token");
@@ -183,8 +184,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           role: data.role,
           balance: data.balance,
           accountType: data.accountType,
-          totalDeposits: data.totalDeposits, // ✅ Added
-          totalWithdrawals: data.totalWithdrawals, // ✅ Added
+          totalDeposits: data.totalDeposits,
+          totalWithdrawals: data.totalWithdrawals,
         };
         setUser(refreshedUser);
         localStorage.setItem("user", JSON.stringify(refreshedUser));
@@ -203,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         logout,
         register,
         refreshUser,
-        fetchUser, // ✅ Add this here
+        fetchUser,
       }}
     >
       {children}

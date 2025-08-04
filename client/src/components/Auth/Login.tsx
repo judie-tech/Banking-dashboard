@@ -25,7 +25,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { login, register, user } = useAuth();
+  const { login, register, user, fetchUser } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,14 +48,19 @@ const Login: React.FC = () => {
       } else {
         if (formData.password !== formData.confirmPassword) {
           setError("Passwords do not match");
+          setLoading(false);
           return;
         }
+
         if (formData.password.length < 6) {
           setError("Password must be at least 6 characters");
+          setLoading(false);
           return;
         }
+
         if (!formData.name.trim()) {
           setError("Name is required");
+          setLoading(false);
           return;
         }
 
@@ -65,8 +70,16 @@ const Login: React.FC = () => {
           formData.password,
           formData.role
         );
+
         if (success) {
-          navigate(formData.role === "admin" ? "/admin" : "/dashboard");
+          await fetchUser(); // ✅ ensure latest user data is loaded
+          const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+          if (storedUser.role === "admin") {
+            navigate("/admin");
+          } else {
+            navigate("/dashboard");
+          }
         } else {
           setError("Registration failed. Please try again.");
         }
@@ -130,7 +143,7 @@ const Login: React.FC = () => {
               </div>
             )}
 
-            {/* Demo Credentials - Only show for login */}
+            {/* Demo Credentials */}
             {isLogin && (
               <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4 text-blue-100 text-sm">
                 <p className="font-semibold mb-2">Demo Credentials:</p>
@@ -139,7 +152,7 @@ const Login: React.FC = () => {
               </div>
             )}
 
-            {/* Name - Only for registration */}
+            {/* Full Name */}
             {!isLogin && (
               <div className="space-y-2">
                 <label className="text-white/90 text-sm font-medium">
@@ -179,7 +192,7 @@ const Login: React.FC = () => {
               </div>
             </div>
 
-            {/* Role Selection - Only for registration */}
+            {/* Account Type */}
             {!isLogin && (
               <div className="space-y-2">
                 <label className="text-white/90 text-sm font-medium">
@@ -198,7 +211,7 @@ const Login: React.FC = () => {
                           role: e.target.value as "user",
                         })
                       }
-                      className="mr-3 text-[#00c9b1]"
+                      className="mr-3"
                     />
                     <User className="w-5 h-5 text-white/80 mr-2" />
                     <span className="text-white/90 font-medium">User</span>
@@ -216,7 +229,7 @@ const Login: React.FC = () => {
                           role: e.target.value as "admin",
                         })
                       }
-                      className="mr-3 text-[#00c9b1]"
+                      className="mr-3"
                     />
                     <UserCheck className="w-5 h-5 text-white/80 mr-2" />
                     <span className="text-white/90 font-medium">Admin</span>
@@ -256,7 +269,7 @@ const Login: React.FC = () => {
               </div>
             </div>
 
-            {/* Confirm Password - Only for registration */}
+            {/* Confirm Password */}
             {!isLogin && (
               <div className="space-y-2">
                 <label className="text-white/90 text-sm font-medium">
@@ -292,7 +305,7 @@ const Login: React.FC = () => {
               </div>
             )}
 
-            {/* Submit Button */}
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -312,7 +325,7 @@ const Login: React.FC = () => {
               )}
             </button>
 
-            {/* Toggle Mode */}
+            {/* Toggle */}
             <div className="text-center">
               <button
                 type="button"
@@ -321,7 +334,7 @@ const Login: React.FC = () => {
               >
                 {isLogin ? (
                   <>
-                    Don't have an account?{" "}
+                    Don’t have an account?{" "}
                     <span className="font-semibold text-[#00c9b1]">
                       Sign Up
                     </span>
