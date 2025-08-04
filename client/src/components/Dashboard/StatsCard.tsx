@@ -1,9 +1,10 @@
 import React from "react";
-import { DivideIcon as LucideIcon } from "lucide-react";
+import { LucideIcon } from "lucide-react";
 
 interface StatsCardProps {
   title: string;
   value: string;
+  subValue?: string; // Optional second value like "Total Deposits"
   change?: string;
   changeType?: "positive" | "negative" | "neutral";
   icon: LucideIcon;
@@ -13,6 +14,7 @@ interface StatsCardProps {
 const StatsCard: React.FC<StatsCardProps> = ({
   title,
   value,
+  subValue,
   change,
   changeType = "neutral",
   icon: Icon,
@@ -53,6 +55,9 @@ const StatsCard: React.FC<StatsCardProps> = ({
 
       <div>
         <h3 className="text-2xl font-bold text-gray-900 mb-1">{value}</h3>
+        {subValue && (
+          <p className="text-sm text-gray-500 font-medium mb-1">{subValue}</p>
+        )}
         <p className="text-gray-600 text-sm">{title}</p>
       </div>
     </div>

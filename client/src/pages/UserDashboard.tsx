@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Wallet,
   TrendingUp,
@@ -7,7 +7,6 @@ import {
   CreditCard,
   DollarSign,
   FileText,
-  Download,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import StatsCard from "../components/Dashboard/StatsCard";
@@ -18,36 +17,90 @@ import StatementsModal from "../components/Statements/StatementsModal";
 import { Transaction } from "../types";
 
 const UserDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, fetchUser } = useAuth();
+
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
+    []
+  );
+  const [loading, setLoading] = useState(true);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [statementsModalOpen, setStatementsModalOpen] = useState(false);
 
-  // Mock data - replace with actual data from backend
-  const recentTransactions: Transaction[] = []; // Empty array to show "no transactions" state
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchTransactions = async () => {
+      if (!user?.id) return;
+
+      const token = localStorage.getItem("token"); // or wherever you store it
+
+      try {
+        const res = await fetch(
+          `http://localhost:3000/api/transactions/user/${user.id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        if (!Array.isArray(data.transactions)) {
+          throw new Error("Unexpected response format");
+        }
+
+        const formatted: Transaction[] = data.transactions
+          .slice(0, 5)
+          .map((tx: any) => ({
+            id: tx.id,
+            amount: tx.amount,
+            type: tx.type,
+            status: tx.status || "completed",
+            date: tx.createdAt,
+            description: tx.note || "Transaction",
+            recipient: tx.recipient || undefined,
+            sender: tx.sender || undefined,
+          }));
+
+        setRecentTransactions(formatted);
+      } catch (err) {
+        console.error("Failed to fetch recent transactions:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, [user?.id]);
 
   const stats = [
     {
       title: "Available Balance",
-      value: "KES 0",
+      value: `KES ${user?.balance?.toLocaleString() || "0"}`,
       icon: Wallet,
       color: "teal" as const,
     },
     {
       title: "Total Deposits",
-      value: "KES 0",
+      value: `KES ${user?.totalDeposits?.toLocaleString() || "0"}`,
       icon: TrendingUp,
       color: "blue" as const,
     },
     {
       title: "Total Withdrawals",
-      value: "0",
+      value: `KES ${user?.totalWithdrawals?.toLocaleString() || "0"}`,
       icon: TrendingDown,
       color: "coral" as const,
     },
     {
       title: "Recent Transactions",
-      value: "0",
+      value: `${recentTransactions.length}`,
       icon: CreditCard,
       color: "purple" as const,
     },
@@ -68,7 +121,7 @@ const UserDashboard: React.FC = () => {
             <div className="bg-white/20 backdrop-blur-lg rounded-xl p-4">
               <p className="text-sm opacity-90 mb-1">Current Balance</p>
               <p className="text-4xl font-bold mb-1">
-                KES {user?.balance.toLocaleString() || "0"}
+                KES {user?.balance?.toLocaleString() || "0"}
               </p>
               <p className="text-sm opacity-75 capitalize">
                 {user?.accountType} Account
@@ -145,23 +198,30 @@ const UserDashboard: React.FC = () => {
 
       {/* Recent Transactions */}
       <div>
-        <RecentTransactions transactions={recentTransactions} />
+        {loading ? (
+          <div className="text-center py-10 text-gray-500">
+            Loading transactions...
+          </div>
+        ) : (
+          <RecentTransactions transactions={recentTransactions} />
+        )}
       </div>
 
-      {/* Transfer Modal */}
+      {/* Modals */}
       <TransferModal
         isOpen={transferModalOpen}
         onClose={() => setTransferModalOpen(false)}
         currentBalance={user?.balance || 0}
+        senderId={String(user?.id ?? "")}
+        onSuccess={() => {
+          fetchUser();
+          setTimeout(() => window.location.reload(), 300);
+        }}
       />
-
-      {/* Deposit Modal */}
       <DepositModal
         isOpen={depositModalOpen}
         onClose={() => setDepositModalOpen(false)}
       />
-
-      {/* Statements Modal */}
       <StatementsModal
         isOpen={statementsModalOpen}
         onClose={() => setStatementsModalOpen(false)}
