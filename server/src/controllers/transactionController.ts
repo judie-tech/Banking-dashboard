@@ -184,11 +184,12 @@ export const getUserTransactions = async (req: Request, res: Response) => {
     }
 
     // Sorting
+
     const sortColumn = sortBy === "amount" ? "tx.amount" : "tx.createdAt";
-    query = query.orderBy(
-      sortColumn,
-      sortOrder.toUpperCase() as "ASC" | "DESC"
-    );
+    const safeSortOrder = (
+      typeof sortOrder === "string" ? sortOrder.toUpperCase() : "DESC"
+    ) as "ASC" | "DESC";
+    query = query.orderBy(sortColumn, safeSortOrder);
 
     const [transactions, total] = await query.getManyAndCount();
 
