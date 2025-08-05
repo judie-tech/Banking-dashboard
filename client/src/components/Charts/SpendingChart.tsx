@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -9,18 +9,18 @@ import {
   Tooltip,
   Legend,
   BarElement,
-  BarController, // Added missing controller
+  BarController,
 } from "chart.js";
 import { Line, Bar } from "react-chartjs-2";
+import { useAuth } from "../../context/AuthContext";
 
-// Register all required components
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
   BarElement,
-  BarController, // Registered here
+  BarController,
   Title,
   Tooltip,
   Legend
@@ -31,64 +31,73 @@ interface SpendingChartProps {
 }
 
 const SpendingChart: React.FC<SpendingChartProps> = ({ type }) => {
-  // Mock data for spending trends
-  const weeklyData = {
-    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-    datasets: [
-      {
-        label: "Spending (KES)",
-        data: [1200, 800, 1500, 2200, 1800, 3200, 2800],
-        borderColor: "rgb(42, 59, 143)",
-        backgroundColor: "rgba(42, 59, 143, 0.1)",
-        tension: 0.4,
-        fill: true,
-      },
-      {
-        label: "Income (KES)",
-        data: [0, 0, 0, 0, 15000, 0, 0],
-        borderColor: "rgb(0, 201, 177)",
-        backgroundColor: "rgba(0, 201, 177, 0.1)",
-        tension: 0.4,
-        fill: true,
-      },
-    ],
-  };
+  const { user } = useAuth();
+  const [spending, setSpending] = useState<number[]>([]);
+  const [income, setIncome] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const monthlyData = {
-    labels: [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ],
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchAnalytics = async () => {
+      try {
+        const res = await fetch(
+          `http://localhost:3000/api/transactions/analytics/${user.id}`
+        );
+
+        if (!res.ok) throw new Error("Failed to fetch analytics");
+
+        const data = await res.json();
+        const dataset = type === "weekly" ? data.weekly : data.monthly;
+
+        setSpending(dataset.spending);
+        setIncome(dataset.income);
+      } catch (err) {
+        console.error("Analytics fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, [type, user?.id]);
+
+  const chartData = {
+    labels:
+      type === "weekly"
+        ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        : [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ],
     datasets: [
       {
         label: "Spending (KES)",
-        data: [
-          25000, 22000, 28000, 24000, 30000, 26000, 32000, 29000, 27000, 31000,
-          28500, 33000,
-        ],
+        data: spending,
         backgroundColor: "rgba(255, 107, 107, 0.8)",
         borderColor: "rgb(255, 107, 107)",
         borderWidth: 2,
+        fill: true,
+        tension: 0.4,
       },
       {
         label: "Income (KES)",
-        data: [
-          45000, 45000, 45000, 45000, 45000, 45000, 45000, 45000, 45000, 45000,
-          45000, 45000,
-        ],
+        data: income,
         backgroundColor: "rgba(0, 201, 177, 0.8)",
         borderColor: "rgb(0, 201, 177)",
         borderWidth: 2,
+        fill: true,
+        tension: 0.4,
       },
     ],
   };
@@ -101,11 +110,7 @@ const SpendingChart: React.FC<SpendingChartProps> = ({ type }) => {
         position: "top" as const,
         labels: {
           usePointStyle: true,
-          padding: 20,
-          font: {
-            size: 12,
-            weight: 500,
-          },
+          font: { size: 12 },
         },
       },
       title: {
@@ -115,67 +120,36 @@ const SpendingChart: React.FC<SpendingChartProps> = ({ type }) => {
           size: 16,
           weight: "bold" as const,
         },
-        padding: 20,
       },
       tooltip: {
-        backgroundColor: "rgba(255, 255, 255, 0.95)",
-        titleColor: "#1f2937",
-        bodyColor: "#1f2937",
-        borderColor: "#e5e7eb",
-        borderWidth: 1,
-        cornerRadius: 8,
-        displayColors: true,
         callbacks: {
-          label: function (context: any) {
-            return `${
+          label: (context: any) =>
+            `${
               context.dataset.label
-            }: KES ${context.parsed.y.toLocaleString()}`;
-          },
+            }: KES ${context.parsed.y.toLocaleString()}`,
         },
       },
     },
     scales: {
       y: {
         beginAtZero: true,
-        grid: {
-          color: "rgba(0, 0, 0, 0.05)",
-        },
         ticks: {
-          precision: 0, // Ensure whole numbers
-          callback: function (value: any) {
-            return "KES " + value.toLocaleString();
-          },
-          font: {
-            size: 11,
-          },
+          callback: (value: number) => "KES " + value.toLocaleString(),
         },
-      },
-      x: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          font: {
-            size: 11,
-          },
-        },
-      },
-    },
-    elements: {
-      point: {
-        radius: 4,
-        hoverRadius: 6,
       },
     },
   };
 
-  const data = type === "weekly" ? weeklyData : monthlyData;
   const ChartComponent = type === "weekly" ? Line : Bar;
 
   return (
     <div className="bg-white/80 backdrop-blur-lg rounded-2xl p-6 shadow-lg border border-white/20">
       <div className="h-80">
-        <ChartComponent data={data} options={options} />
+        {loading ? (
+          <p className="text-center text-gray-500">Loading chart...</p>
+        ) : (
+          <ChartComponent data={chartData} options={options} />
+        )}
       </div>
     </div>
   );

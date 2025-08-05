@@ -1,11 +1,21 @@
-// File: src/components/TransactionHistory.tsx
 import React, { useState, useEffect } from "react";
 import { Filter, Download, Search } from "lucide-react";
-import { Transaction } from "../types";
-import { useAuth } from "../context/AuthContext"; // Import the auth context
+import { useAuth } from "../context/AuthContext";
+
+interface Transaction {
+  id: number;
+  type: "credit" | "debit";
+  amount: number;
+  note: string;
+  createdAt: string;
+  user: {
+    id: number;
+    name: string;
+  };
+}
 
 const TransactionHistory: React.FC = () => {
-  const { user } = useAuth(); // Get user from auth context
+  const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [transactionType, setTransactionType] = useState<
@@ -19,7 +29,6 @@ const TransactionHistory: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch transactions from backend
   const fetchTransactions = async () => {
     setIsLoading(true);
     setError(null);
@@ -28,7 +37,6 @@ const TransactionHistory: React.FC = () => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("User not authenticated");
 
-      // Use user ID from context instead of localStorage
       if (!user) throw new Error("User session not available");
       const userId = user.id;
 
@@ -71,12 +79,10 @@ const TransactionHistory: React.FC = () => {
     }
   };
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [dateRange, transactionType, searchTerm, sortBy, sortOrder]);
 
-  // Fetch transactions when dependencies change
   useEffect(() => {
     if (user) {
       fetchTransactions();
@@ -93,26 +99,68 @@ const TransactionHistory: React.FC = () => {
 
   const exportTransactions = async (format: "csv" | "pdf") => {
     try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("User not authenticated");
+
+      if (!user) throw new Error("User session not available");
+      const userId = user.id;
+
+      const params = new URLSearchParams({
+        from: dateRange.start,
+        to: dateRange.end,
+        type: transactionType !== "all" ? transactionType : "",
+        search: searchTerm,
+        sortBy,
+        sortOrder,
+      });
+
       if (format === "csv") {
-        window.location.href = "/api/transactions/export";
+        window.location.href = `http://localhost:3000/api/transactions/export?userId=${userId}&${params.toString()}`;
       } else {
-        console.log("PDF export not implemented");
+        const response = await fetch(
+          `http://localhost:3000/api/transactions/export-pdf?userId=${userId}&${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) throw new Error("PDF export failed");
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "transactions.pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
       }
     } catch (err: unknown) {
       if (err instanceof Error) {
         console.error("Export failed:", err.message);
+        alert(`Export failed: ${err.message}`);
       } else {
         console.error("Export failed with unknown error");
       }
     }
   };
 
-  // Format currency
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "Kes",
     }).format(amount);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
   };
 
   return (
@@ -310,14 +358,10 @@ const TransactionHistory: React.FC = () => {
                     className="border-b border-white/20 hover:bg-gray-50/50 transition-colors"
                   >
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {new Date(transaction.date).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
+                      {formatDate(transaction.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {transaction.description}
+                      {transaction.note}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <span
