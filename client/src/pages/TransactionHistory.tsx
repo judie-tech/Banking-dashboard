@@ -1,9 +1,12 @@
-import React, { useState } from "react";
-import { Filter, Download, Calendar, Search } from "lucide-react";
+// File: src/components/TransactionHistory.tsx
+import React, { useState, useEffect } from "react";
+import { Filter, Download, Search } from "lucide-react";
 import { Transaction } from "../types";
+import { useAuth } from "../context/AuthContext"; // Import the auth context
 
 const TransactionHistory: React.FC = () => {
-  const [transactions] = useState<Transaction[]>([]);
+  const { user } = useAuth(); // Get user from auth context
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [transactionType, setTransactionType] = useState<
     "all" | "debit" | "credit"
@@ -12,12 +15,104 @@ const TransactionHistory: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<"date" | "amount">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [totalPages, setTotalPages] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const transactionsPerPage = 10;
+  // Fetch transactions from backend
+  const fetchTransactions = async () => {
+    setIsLoading(true);
+    setError(null);
 
-  const exportTransactions = (format: "csv" | "pdf") => {
-    // Simulate export functionality
-    console.log(`Exporting transactions as ${format.toUpperCase()}`);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("User not authenticated");
+
+      // Use user ID from context instead of localStorage
+      if (!user) throw new Error("User session not available");
+      const userId = user.id;
+
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        sortBy,
+        sortOrder,
+      });
+
+      if (dateRange.start) params.append("from", dateRange.start);
+      if (dateRange.end) params.append("to", dateRange.end);
+      if (transactionType !== "all") params.append("type", transactionType);
+      if (searchTerm) params.append("search", searchTerm);
+
+      const response = await fetch(
+        `http://localhost:3000/api/transactions/user/${userId}?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch transactions");
+      }
+
+      const data = await response.json();
+      setTransactions(data.transactions);
+      setTotalPages(data.totalPages);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || "An error occurred");
+      } else {
+        setError("An unknown error occurred");
+      }
+      console.error("Error fetching transactions:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateRange, transactionType, searchTerm, sortBy, sortOrder]);
+
+  // Fetch transactions when dependencies change
+  useEffect(() => {
+    if (user) {
+      fetchTransactions();
+    }
+  }, [
+    user,
+    currentPage,
+    dateRange,
+    transactionType,
+    searchTerm,
+    sortBy,
+    sortOrder,
+  ]);
+
+  const exportTransactions = async (format: "csv" | "pdf") => {
+    try {
+      if (format === "csv") {
+        window.location.href = "/api/transactions/export";
+      } else {
+        console.log("PDF export not implemented");
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error("Export failed:", err.message);
+      } else {
+        console.error("Export failed with unknown error");
+      }
+    }
+  };
+
+  // Format currency
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
   };
 
   return (
@@ -170,7 +265,31 @@ const TransactionHistory: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {transactions.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center">
+                    <div className="flex justify-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00c9b1]"></div>
+                    </div>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-6 py-12 text-center text-red-500"
+                  >
+                    <p className="font-medium">Error loading transactions</p>
+                    <p className="text-sm mt-2">{error}</p>
+                    <button
+                      onClick={fetchTransactions}
+                      className="mt-4 px-4 py-2 bg-[#2a3b8f] text-white rounded-lg hover:bg-[#1e2c7a] transition-colors"
+                    >
+                      Retry
+                    </button>
+                  </td>
+                </tr>
+              ) : transactions.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center">
                     <div className="text-gray-500">
@@ -180,33 +299,86 @@ const TransactionHistory: React.FC = () => {
                       <p className="text-lg font-medium mb-2">
                         No transactions found
                       </p>
-                      <p className="text-sm">
-                        Transactions will appear here after backend integration
-                      </p>
+                      <p className="text-sm">Try adjusting your filters</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                // Transactions will be mapped here when available
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-6 py-4 text-center text-gray-500"
+                transactions.map((transaction) => (
+                  <tr
+                    key={transaction.id}
+                    className="border-b border-white/20 hover:bg-gray-50/50 transition-colors"
                   >
-                    Transaction data ready for backend integration
-                  </td>
-                </tr>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {new Date(transaction.date).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {transaction.description}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          transaction.type === "credit"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {transaction.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                      {formatCurrency(transaction.amount)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 text-center">
+                      <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded">
+                        Completed
+                      </span>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination would go here */}
-        <div className="px-6 py-4 border-t border-white/20">
-          <div className="text-sm text-gray-600 text-center">
-            Ready for pagination implementation
+        {/* Pagination */}
+        {transactions.length > 0 && totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-white/20 flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-4 py-2 rounded-xl transition-colors ${
+                  currentPage === 1
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-[#2a3b8f] text-white hover:bg-[#1e2c7a]"
+                }`}
+              >
+                Previous
+              </button>
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className={`px-4 py-2 rounded-xl transition-colors ${
+                  currentPage === totalPages
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-[#2a3b8f] text-white hover:bg-[#1e2c7a]"
+                }`}
+              >
+                Next
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
